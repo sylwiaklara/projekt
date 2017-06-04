@@ -1,0 +1,97 @@
+#include <iostream>
+#include <opencv2/opencv.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <sstream>
+
+
+using namespace std;
+using namespace cv;
+
+
+int main(int argc, char** argv)
+{
+    cout << "START" << endl;
+
+    // wczytanie ścieżki
+    string filename;
+    filename = "zielonenaczerwone";
+    string sciezka = string(PROJECT_SOURCE_DIR) + "/data/" + filename + ".mp4";
+
+    // wczytanie filmu
+    VideoCapture capture(sciezka);
+
+    // i sprawdzenie czy się otworzył
+    if (!capture.isOpened())
+        return -1;
+
+    //
+
+    //
+    // określenie zmiennych typu Mat
+    Mat hsv;
+    Mat red;
+
+    for (;;)
+{
+
+    Mat img_original;
+    capture.read (img_original);
+
+
+    if(!capture.read(img_original)) break;
+    // namedWindow("film", CV_WINDOW_NORMAL);
+    //imshow("film", img_original);
+          // char d = waitKey(100);
+          // if ( d == 27) break;
+
+    // transformacja kolorów na HSV
+    cvtColor(img_original, hsv, CV_BGR2HSV);
+
+    // wybranie tylko koloru czerwonego
+    inRange(hsv, Scalar(170, 200, 200), Scalar (179, 255, 255), red);
+
+    // operacje morfologiczne
+    dilate(red, red, getStructuringElement(MORPH_ELLIPSE, Size(15, 15)), Point (1,1), 2);
+    erode(red, red, getStructuringElement(MORPH_ELLIPSE, Size(15, 15)), Point (1,1), 5);
+    GaussianBlur(red,red, Size(15,15), 3);
+    dilate(red, red, getStructuringElement(MORPH_ELLIPSE, Size(15, 15)), Point (1,1), 2);
+    GaussianBlur(red, red, Size(11, 11), 2, 2 );
+
+
+    // wyświetlenie obrazka po morfologii
+     namedWindow("czerwone tylko", CV_WINDOW_NORMAL);
+      imshow("czerwone tylko", red);
+
+
+    // transformacja hough dla kół
+    vector<Vec3f> circles ;
+
+    HoughCircles(red, circles, CV_HOUGH_GRADIENT, 1, red.rows/8, 100, 20, 0, 0);
+
+
+    // pętla po znalezionych kołach i narysowanie ich na oryginalnym obrazku
+    if(circles.size() == 0) exit(-1);
+            for(size_t i = 0; i < circles.size(); i++)
+            {
+                Point center(round(circles[i][0]), round(circles[i][1]));
+                int radius = round(circles[i][2]);
+
+                circle(img_original, center, radius, Scalar(255, 255, 0), 5);
+            }
+
+
+    namedWindow("zaznaczenie", CV_WINDOW_NORMAL);
+    imshow("zaznaczenie", img_original);
+
+    if (circles.size() == 0)
+            cout << "BRAK ŚWIATŁA CZERWONEGO - JEDŹ!" << endl;
+    else
+            cout << "ŚWIATŁO CZERWONE - STÓJ  !" << endl;
+
+
+    if(waitKey(10) >= 0) break;
+
+}
+
+    return 0;
+}
