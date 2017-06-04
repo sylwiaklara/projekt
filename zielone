@@ -1,0 +1,85 @@
+#include <iostream>
+#include <opencv2/opencv.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <sstream>
+
+
+using namespace std;
+using namespace cv;
+
+
+int main(int argc, char** argv)
+{
+    cout << "START" << endl;
+
+    // wczytanie obrazka
+    string filename;
+    filename = "zielone";
+
+    string sciezka = string(PROJECT_SOURCE_DIR) + "/data/" + filename + ".jpg";
+    Mat img_original = imread(sciezka);
+
+    // error dla błędu wczytania
+    if (img_original.empty())
+    {
+        cout << "Nie można otworzyć obrazka!" << endl;
+        return -1;
+    }
+    // wyświetlenie oryginału , jeśłi wczytano
+    namedWindow("oryginal", CV_WINDOW_NORMAL);
+    imshow("oryginal", img_original);
+
+    // określenie zmiennych typu Mat
+    Mat hsv;
+    Mat green;
+
+
+    // transformacja kolorów na HSV
+    cvtColor(img_original, hsv, CV_BGR2HSV);
+
+    // wybranie tylko koloru czerwonego
+    inRange(hsv, Scalar(85, 64, 200), Scalar (170, 255, 255), green);
+
+    // operacje morfologiczne
+    dilate(green, green, getStructuringElement(MORPH_ELLIPSE, Size(15, 15)),Point (1,1), 2);
+    erode(green, green, getStructuringElement(MORPH_ELLIPSE, Size(15, 15)),Point (1,1), 5);
+    GaussianBlur(green,green, Size(15,15), 3);
+    dilate(green, green, getStructuringElement(MORPH_ELLIPSE, Size(15, 15)),Point (1,1), 2);
+    GaussianBlur(green, green, Size(11, 11), 2, 2 );
+
+
+    // wyświetlenie obrazka po morfologii
+    namedWindow("zielone tylko", CV_WINDOW_NORMAL);
+    imshow("zielone tylko", green);
+
+
+    // transformacja hough dla kół
+    vector<Vec3f> circles;
+    HoughCircles(green, circles, CV_HOUGH_GRADIENT, 1, green.rows/8, 100, 20, 0, 0);
+
+
+    // pętla po znalezionych kołach i narysowanie ich na oryginalnym obrazku
+    if(circles.size() == 0) exit(-1);
+            for(size_t i = 0; i < circles.size(); i++)
+            {
+                Point center(round(circles[i][0]), round(circles[i][1]));
+                int radius = round(circles[i][2]);
+
+                circle(img_original, center, radius, Scalar(255, 255, 0), 5);
+            }
+
+
+    namedWindow("zaznaczenie", CV_WINDOW_NORMAL);
+    imshow("zaznaczenie", img_original);
+
+    if (circles.size() == 0)
+            cout << "BRAK ŚWIATŁA ZIELONEGO - STÓJ!" << endl;
+    else
+            cout << "ŚWIATŁO ZIELONE - JEDŹ  !" << endl;
+
+    waitKey(0);
+
+
+
+    return 0;
+}
