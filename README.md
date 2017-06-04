@@ -1,0 +1,2 @@
+# projekt
+widzenie maszynowe
